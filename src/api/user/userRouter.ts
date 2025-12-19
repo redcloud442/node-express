@@ -4,7 +4,7 @@ import { z } from "zod";
 import { GetUserSchema, UserSchema } from "@/api/user/userModel";
 import { createApiResponse } from "@/api-docs/openAPIResponseBuilders";
 import { validateRequest } from "@/common/utils/httpHandlers";
-import { userController } from "./userController";
+import { getUser, getUsers } from "./userController";
 
 export const userRegistry = new OpenAPIRegistry();
 export const userRouter: Router = express.Router();
@@ -18,7 +18,7 @@ userRegistry.registerPath({
 	responses: createApiResponse(z.array(UserSchema), "Success"),
 });
 
-userRouter.get("/", userController.getUsers);
+userRouter.get("/", getUsers);
 
 userRegistry.registerPath({
 	method: "get",
@@ -28,4 +28,4 @@ userRegistry.registerPath({
 	responses: createApiResponse(UserSchema, "Success"),
 });
 
-userRouter.get("/:id", validateRequest(GetUserSchema), userController.getUser);
+userRouter.get("/:id", validateRequest(GetUserSchema), getUser);
