@@ -1,6 +1,6 @@
 import type { User } from "@/api/user/userModel";
 
-const users: User[] = [
+export const users: User[] = [
 	{
 		id: 1,
 		name: "Alice",
