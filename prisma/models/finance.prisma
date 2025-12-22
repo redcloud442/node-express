@@ -1,0 +1,250 @@
+model BankAccount {
+    id       String      @id @default(cuid())
+    name     String
+    type     AccountType
+    currency String      @default("PHP")
+
+    openingBalance Decimal @db.Decimal(12, 2)
+    currentBalance Decimal @db.Decimal(12, 2)
+
+    isActive   Boolean @default(true)
+    isArchived Boolean @default(false)
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    transactions  Transaction[]
+    transfersFrom Transfer[]    @relation("FromAccount")
+    transfersTo   Transfer[]    @relation("ToAccount")
+
+    trackers AccountTracker[]
+    logs     ActivityLog[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("bank_account")
+    @@schema("finance")
+}
+
+model Category {
+    id    String       @id @default(cuid())
+    name  String
+    type  CategoryType
+    icon  String?
+    color String?
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    parentId String?
+    parent   Category?  @relation("SubCategories", fields: [parentId], references: [id])
+    children Category[] @relation("SubCategories")
+
+    transactions Transaction[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([userId, type])
+    @@map("category")
+    @@schema("finance")
+}
+
+model AccountTracker {
+    id        String      @id @default(cuid())
+    accountId String
+    account   BankAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+    period       TrackerPeriod
+    totalIncome  Decimal       @default(0) @db.Decimal(12, 2)
+    totalExpense Decimal       @default(0) @db.Decimal(12, 2)
+    netChange    Decimal       @default(0) @db.Decimal(12, 2)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([accountId, period])
+    @@map("account_tracker")
+    @@schema("finance")
+}
+
+model Transfer {
+    id          String  @id @default(cuid())
+    amount      Decimal @db.Decimal(12, 2)
+    description String?
+
+    fromAccountId String
+    fromAccount   BankAccount @relation("FromAccount", fields: [fromAccountId], references: [id], onDelete: Restrict)
+
+    toAccountId String
+    toAccount   BankAccount @relation("ToAccount", fields: [toAccountId], references: [id], onDelete: Restrict)
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("transfer")
+    @@schema("finance")
+}
+
+model ActivityLog {
+    id         String    @id @default(cuid())
+    action     LogAction
+    entityType String
+    entityId   String
+    metadata   Json?
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    accountId String?
+    account   BankAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+    createdAt DateTime @default(now())
+
+    @@index([userId, createdAt])
+    @@index([accountId, createdAt])
+    @@map("activity_log")
+    @@schema("finance")
+}
+
+model Notification {
+    id      String           @id @default(cuid())
+    title   String
+    message String
+    type    NotificationType
+
+    isRead Boolean @default(false)
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+
+    @@index([userId, isRead, createdAt])
+    @@map("notification")
+    @@schema("finance")
+}
+
+model RecurringTransaction {
+    id          String    @id @default(cuid())
+    amount      Decimal   @db.Decimal(12, 2)
+    description String?
+    frequency   Frequency
+
+    startDate DateTime
+    nextDate  DateTime
+    isActive  Boolean  @default(true)
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    transactions Transaction[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([userId, isActive])
+    @@map("recurring_transaction")
+    @@schema("finance")
+}
+
+model Transaction {
+    id          String          @id @default(cuid())
+    amount      Decimal         @db.Decimal(12, 2)
+    description String?
+    date        DateTime        @default(now())
+    type        TransactionType
+
+    accountId String
+    account   BankAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+    categoryId String
+    category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+    isDeleted Boolean @default(false)
+    metadata  Json?
+
+    recurringId       String?
+    recurringTemplate RecurringTransaction? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@index([accountId, date])
+    @@index([categoryId, date])
+    @@map("transaction")
+    @@schema("finance")
+}
+
+enum AccountType {
+    CASH
+    CHECKING
+    SAVINGS
+    CREDIT_CARD
+    INVESTMENT
+
+    @@map("account_type")
+    @@schema("finance")
+}
+
+enum TransactionType {
+    INCOME
+    EXPENSE
+    TRANSFER
+
+    @@map("transaction_type")
+    @@schema("finance")
+}
+
+enum LogAction {
+    CREATE
+    UPDATE
+    DELETE
+    TRANSFER
+    LOGIN
+    LOGOUT
+    SYNC
+
+    @@schema("finance")
+}
+
+enum TrackerPeriod {
+    DAILY
+    WEEKLY
+    MONTHLY
+    YEARLY
+
+    @@schema("finance")
+}
+
+enum NotificationType {
+    BUDGET_ALERT
+    LOW_BALANCE
+    GOAL_REACHED
+    RECURRING_DUE
+    SYSTEM
+
+    @@schema("finance")
+}
+
+enum CategoryType {
+    INCOME
+    EXPENSE
+    TRANSFER
+
+    @@map("category_type")
+    @@schema("finance")
+}
+
+enum Frequency {
+    DAILY
+    WEEKLY
+    MONTHLY
+    YEARLY
+
+    @@schema("finance")
+}
